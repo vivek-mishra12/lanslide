@@ -1,7 +1,7 @@
 // simulate_sensors.js - A script to simulate sensor data and send it to the backend
 
 const axios = require('axios'); // We need to install axios: npm install axios
-const API_URL = 'http://localhost:3000/api/data';
+const API_URL = 'https://lanslide.onrender.com/api/data';
 
 // --- Sensor Thresholds ---
 // These values can be adjusted based on your requirements.
