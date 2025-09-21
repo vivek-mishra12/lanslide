@@ -1,0 +1,186 @@
+<!-- history.html - History Dashboard Page -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sensor History</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .chart-container { position: relative; height: 60vh; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center p-4">
+
+    <nav class="w-full max-w-4xl flex justify-center mb-8">
+        <a href="index.html" class="bg-gray-300 text-gray-800 font-semibold py-2 px-6 rounded-l-full shadow-lg hover:bg-gray-400 transition duration-300">Latest</a>
+        <a href="history.html" class="bg-blue-600 text-white font-semibold py-2 px-6 rounded-r-full shadow-lg hover:bg-blue-700 transition duration-300">History</a>
+    </nav>
+
+    <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-4xl text-center">
+        <h1 class="text-4xl font-extrabold text-gray-800 mb-6">Historical Sensor Data</h1>
+        <div class="grid grid-cols-1 gap-8">
+            <div class="chart-container">
+                <canvas id="rainChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <canvas id="soilMoistureChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <canvas id="tiltChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <canvas id="vibrationChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Thresholds for each sensor (can be adjusted)
+        const THRESHOLDS = {
+            rain: 50,
+            soilMoisture: 70,
+            tilt: 10,
+            vibration: 20
+        };
+
+        const SECONDS_TO_AVERAGE = 10;
+
+        function averageData(data) {
+            const averagedData = {};
+            const keys = ['rain', 'soilMoisture', 'tilt', 'vibration'];
+
+            keys.forEach(key => {
+                averagedData[key] = [];
+            });
+            averagedData.labels = [];
+
+            if (data.length === 0) return averagedData;
+
+            let bucketStartTimestamp = new Date(data[0].timestamp).getTime();
+            let bucket = [];
+
+            data.forEach(reading => {
+                const readingTime = new Date(reading.timestamp).getTime();
+                // Check if the reading falls within the current 10-second bucket
+                if (readingTime - bucketStartTimestamp < SECONDS_TO_AVERAGE * 1000) {
+                    bucket.push(reading);
+                } else {
+                    // Process the full bucket and start a new one
+                    if (bucket.length > 0) {
+                        const averagedReading = keys.reduce((acc, key) => {
+                            const sum = bucket.reduce((s, r) => s + r[key], 0);
+                            acc[key] = sum / bucket.length;
+                            return acc;
+                        }, {});
+
+                        keys.forEach(key => {
+                            averagedData[key].push({
+                                x: new Date(bucketStartTimestamp),
+                                y: averagedReading[key]
+                            });
+                        });
+                        averagedData.labels.push(new Date(bucketStartTimestamp).toLocaleTimeString());
+                    }
+
+                    // Reset for the new bucket
+                    bucket = [reading];
+                    bucketStartTimestamp = readingTime;
+                }
+            });
+
+            // Process the last bucket
+            if (bucket.length > 0) {
+                const averagedReading = keys.reduce((acc, key) => {
+                    const sum = bucket.reduce((s, r) => s + r[key], 0);
+                    acc[key] = sum / bucket.length;
+                    return acc;
+                }, {});
+
+                keys.forEach(key => {
+                    averagedData[key].push({
+                        x: new Date(bucketStartTimestamp),
+                        y: averagedReading[key]
+                    });
+                });
+                averagedData.labels.push(new Date(bucketStartTimestamp).toLocaleTimeString());
+            }
+
+            return averagedData;
+        }
+
+        function createChart(canvasId, label, data, borderColor, backgroundColor, threshold) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            let backgroundColors = data.map(point => point.y > threshold ? 'rgba(255, 99, 132, 0.5)' : backgroundColor);
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map(p => p.x.toLocaleTimeString()),
+                    datasets: [{
+                        label: label,
+                        data: data.map(p => p.y),
+                        borderColor: borderColor,
+                        backgroundColor: backgroundColor,
+                        pointBackgroundColor: backgroundColors,
+                        pointRadius: 5,
+                        pointHoverRadius: 8,
+                        fill: false,
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Sensor Value'
+                            },
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.raw.toFixed(2)}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Main function to fetch data and create charts
+        async function fetchAndPlotHistory() {
+            try {
+                const response = await fetch('/api/history');
+                const rawData = await response.json();
+                const averagedData = averageData(rawData);
+
+                createChart('rainChart', 'Rain Sensor', averagedData.rain, 'rgb(75, 192, 192)', 'rgba(75, 192, 192, 0.5)', THRESHOLDS.rain);
+                createChart('soilMoistureChart', 'Soil Moisture', averagedData.soilMoisture, 'rgb(153, 102, 255)', 'rgba(153, 102, 255, 0.5)', THRESHOLDS.soilMoisture);
+                createChart('tiltChart', 'Tilt Sensor', averagedData.tilt, 'rgb(255, 159, 64)', 'rgba(255, 159, 64, 0.5)', THRESHOLDS.tilt);
+                createChart('vibrationChart', 'Vibration Sensor', averagedData.vibration, 'rgb(255, 99, 132)', 'rgba(255, 99, 132, 0.5)', THRESHOLDS.vibration);
+            } catch (error) {
+                console.error('Error fetching and plotting data:', error);
+            }
+        }
+
+        fetchAndPlotHistory();
+        // Refresh the charts every minute
+        setInterval(fetchAndPlotHistory, 60 * 1000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,102 @@
+<!-- index.html - Latest Readings Page -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Sensor Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center p-4">
+
+    <nav class="w-full max-w-4xl flex justify-center mb-8">
+        <a href="index.html" class="bg-blue-600 text-white font-semibold py-2 px-6 rounded-l-full shadow-lg hover:bg-blue-700 transition duration-300">Latest</a>
+        <a href="history.html" class="bg-gray-300 text-gray-800 font-semibold py-2 px-6 rounded-r-full shadow-lg hover:bg-gray-400 transition duration-300">History</a>
+    </nav>
+
+    <!-- Warning Message Container -->
+    <div id="warning-message" class="bg-red-500 text-white p-4 rounded-xl shadow-lg w-full max-w-4xl text-center mb-6 hidden">
+        <p class="text-xl font-bold">🚨 WARNING: Critical sensor value detected! 🚨</p>
+    </div>
+
+    <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-4xl text-center">
+        <h1 class="text-4xl font-extrabold text-gray-800 mb-6">Live Sensor Readings</h1>
+        <div id="readings" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- Sensor data will be dynamically injected here -->
+            <div class="bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200">
+                <h2 class="text-xl font-bold text-gray-700">Rain Sensor</h2>
+                <p id="rain-value" class="text-4xl font-light text-blue-500 mt-2">--</p>
+            </div>
+            <div class="bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200">
+                <h2 class="text-xl font-bold text-gray-700">Soil Moisture</h2>
+                <p id="soilMoisture-value" class="text-4xl font-light text-green-500 mt-2">--</p>
+            </div>
+            <div class="bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200">
+                <h2 class="text-xl font-bold text-gray-700">Tilt Sensor</h2>
+                <p id="tilt-value" class="text-4xl font-light text-red-500 mt-2">--</p>
+            </div>
+            <div class="bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200">
+                <h2 class="text-xl font-bold text-gray-700">Vibration Sensor</h2>
+                <p id="vibration-value" class="text-4xl font-light text-purple-500 mt-2">--</p>
+            </div>
+        </div>
+        <p class="text-sm text-gray-500 mt-6">Last updated: <span id="timestamp">--</span></p>
+    </div>
+
+    <script>
+        // Thresholds for each sensor (must match the ones in simulate_sensors.js)
+        const THRESHOLDS = {
+            rain: 95,
+            soilMoisture: 80,
+            tilt: 50,
+            vibration: 75
+        };
+
+        const warningMessage = document.getElementById('warning-message');
+
+        // Function to fetch and display latest sensor data
+        function fetchLatestData() {
+            fetch('/api/latest')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data) {
+                        document.getElementById('rain-value').textContent = data.rain.toFixed(2);
+                        document.getElementById('soilMoisture-value').textContent = data.soilMoisture.toFixed(2);
+                        document.getElementById('tilt-value').textContent = data.tilt.toFixed(2);
+                        document.getElementById('vibration-value').textContent = data.vibration.toFixed(2);
+
+                        const date = new Date(data.timestamp);
+                        document.getElementById('timestamp').textContent = date.toLocaleTimeString();
+
+                        // Check if any threshold is crossed and show/hide the warning
+                        if (data.rain > THRESHOLDS.rain ||
+                            data.soilMoisture > THRESHOLDS.soilMoisture ||
+                            data.tilt > THRESHOLDS.tilt ||
+                            data.vibration > THRESHOLDS.vibration) {
+                            warningMessage.classList.remove('hidden');
+                        } else {
+                            warningMessage.classList.add('hidden');
+                        }
+
+                    } else {
+                        // If no data is returned, hide the warning
+                        warningMessage.classList.add('hidden');
+                    }
+                })
+                .catch(error => console.error('Error fetching data:', error));
+        }
+
+        // Fetch data initially and then every second
+        fetchLatestData();
+        setInterval(fetchLatestData, 1000);
+    </script>
+</body>
+</html>
