@@ -36,10 +36,13 @@ db.once('open', () => {
 
 // Define the schema for our sensor readings
 const sensorDataSchema = new mongoose.Schema({
-    rain: Number,
+    temperature: Number,
+    humidity: Number,
+    accelX: Number,
+    accelY: Number,
+    accelZ: Number,
+    raindrop: Number,
     soilMoisture: Number,
-    tilt: Number,
-    vibration: Number,
     timestamp: {
         type: Date,
         default: Date.now,
@@ -54,8 +57,21 @@ const SensorReading = mongoose.model('SensorReading', sensorDataSchema);
 // Endpoint to receive new sensor data (simulated sensor POST request)
 app.post('/api/data', async (req, res) => {
     try {
-        const { rain, soilMoisture, tilt, vibration } = req.body;
-        const newReading = new SensorReading({ rain, soilMoisture, tilt, vibration });
+        // Extract all 7 new fields from the request body
+        const { temperature, humidity, accelX, accelY, accelZ, raindrop, soilMoisture } = req.body;
+        
+        // Note: The 'api_key' sent by the ESP32 is automatically ignored here
+        // as it is not part of the Mongoose schema.
+        
+        const newReading = new SensorReading({ 
+            temperature, 
+            humidity, 
+            accelX, 
+            accelY, 
+            accelZ, 
+            raindrop, 
+            soilMoisture 
+        });
         await newReading.save();
         res.status(201).json({ message: 'Data saved successfully!' });
     } catch (err) {

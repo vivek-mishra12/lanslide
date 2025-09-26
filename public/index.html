@@ -1,4 +1,3 @@
-<!-- index.html - Latest Readings Page -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -17,7 +16,6 @@
         <a href="history.html" class="bg-gray-300 text-gray-800 font-semibold py-2 px-6 rounded-r-full shadow-lg hover:bg-gray-400 transition duration-300">History</a>
     </nav>
 
-    <!-- Warning Message Container -->
     <div id="warning-message" class="bg-red-500 text-white p-4 rounded-xl shadow-lg w-full max-w-4xl text-center mb-6 hidden">
         <p class="text-xl font-bold">🚨 WARNING: Critical sensor value detected! 🚨</p>
     </div>
@@ -25,34 +23,50 @@
     <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-4xl text-center">
         <h1 class="text-4xl font-extrabold text-gray-800 mb-6">Live Sensor Readings</h1>
         <div id="readings" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <!-- Sensor data will be dynamically injected here -->
             <div class="bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200">
-                <h2 class="text-xl font-bold text-gray-700">Rain Sensor</h2>
-                <p id="rain-value" class="text-4xl font-light text-blue-500 mt-2">--</p>
+                <h2 class="text-xl font-bold text-gray-700">Temperature (°C)</h2>
+                <p id="temperature-value" class="text-4xl font-light text-red-600 mt-2">--</p>
             </div>
             <div class="bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200">
-                <h2 class="text-xl font-bold text-gray-700">Soil Moisture</h2>
+                <h2 class="text-xl font-bold text-gray-700">Humidity (%)</h2>
+                <p id="humidity-value" class="text-4xl font-light text-blue-500 mt-2">--</p>
+            </div>
+            <div class="bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200">
+                <h2 class="text-xl font-bold text-gray-700">Soil Moisture (ADC)</h2>
                 <p id="soilMoisture-value" class="text-4xl font-light text-green-500 mt-2">--</p>
             </div>
             <div class="bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200">
-                <h2 class="text-xl font-bold text-gray-700">Tilt Sensor</h2>
-                <p id="tilt-value" class="text-4xl font-light text-red-500 mt-2">--</p>
+                <h2 class="text-xl font-bold text-gray-700">Raindrop (ADC)</h2>
+                <p id="raindrop-value" class="text-4xl font-light text-cyan-500 mt-2">--</p>
+            </div>
+            
+            <div class="bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200">
+                <h2 class="text-xl font-bold text-gray-700">Accel X (m/s²)</h2>
+                <p id="accelX-value" class="text-4xl font-light text-purple-500 mt-2">--</p>
             </div>
             <div class="bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200">
-                <h2 class="text-xl font-bold text-gray-700">Vibration Sensor</h2>
-                <p id="vibration-value" class="text-4xl font-light text-purple-500 mt-2">--</p>
+                <h2 class="text-xl font-bold text-gray-700">Accel Y (m/s²)</h2>
+                <p id="accelY-value" class="text-4xl font-light text-purple-500 mt-2">--</p>
+            </div>
+            <div class="bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200">
+                <h2 class="text-xl font-bold text-gray-700">Accel Z (m/s²)</h2>
+                <p id="accelZ-value" class="text-4xl font-light text-purple-500 mt-2">--</p>
             </div>
         </div>
         <p class="text-sm text-gray-500 mt-6">Last updated: <span id="timestamp">--</span></p>
     </div>
 
     <script>
-        // Thresholds for each sensor (must match the ones in simulate_sensors.js)
+        // Thresholds adjusted for the new sensor data structure.
+        // ADC sensors (raindrop, soilMoisture) use INVERSE logic: a low ADC value is critical.
         const THRESHOLDS = {
-            rain: 95,
-            soilMoisture: 80,
-            tilt: 50,
-            vibration: 75
+            temperature: 40,  // High temperature warning (°C)
+            humidity: 90,     // High humidity warning (%)
+            accelX: 2.5,      // High acceleration/tilt value (absolute value, m/s²)
+            accelY: 2.5,      // High acceleration/tilt value (absolute value, m/s²)
+            accelZ: 12.0,     // Significant deviation from 9.81 m/s^2 (m/s²)
+            raindrop: 100,    // Low ADC value (e.g., < 100) means HEAVY rain
+            soilMoisture: 700 // Low ADC value (e.g., < 700) means HIGH moisture
         };
 
         const warningMessage = document.getElementById('warning-message');
@@ -68,19 +82,29 @@
                 })
                 .then(data => {
                     if (data) {
-                        document.getElementById('rain-value').textContent = data.rain.toFixed(2);
-                        document.getElementById('soilMoisture-value').textContent = data.soilMoisture.toFixed(2);
-                        document.getElementById('tilt-value').textContent = data.tilt.toFixed(2);
-                        document.getElementById('vibration-value').textContent = data.vibration.toFixed(2);
+                        // Update all 7 new values
+                        document.getElementById('temperature-value').textContent = data.temperature.toFixed(2);
+                        document.getElementById('humidity-value').textContent = data.humidity.toFixed(2);
+                        document.getElementById('accelX-value').textContent = data.accelX.toFixed(2);
+                        document.getElementById('accelY-value').textContent = data.accelY.toFixed(2);
+                        document.getElementById('accelZ-value').textContent = data.accelZ.toFixed(2);
+                        // ADC values are displayed as integers
+                        document.getElementById('raindrop-value').textContent = data.raindrop; 
+                        document.getElementById('soilMoisture-value').textContent = data.soilMoisture;
 
                         const date = new Date(data.timestamp);
                         document.getElementById('timestamp').textContent = date.toLocaleTimeString();
 
                         // Check if any threshold is crossed and show/hide the warning
-                        if (data.rain > THRESHOLDS.rain ||
-                            data.soilMoisture > THRESHOLDS.soilMoisture ||
-                            data.tilt > THRESHOLDS.tilt ||
-                            data.vibration > THRESHOLDS.vibration) {
+                        const isWarning = data.temperature > THRESHOLDS.temperature ||
+                                        data.humidity > THRESHOLDS.humidity ||
+                                        Math.abs(data.accelX) > THRESHOLDS.accelX ||
+                                        Math.abs(data.accelY) > THRESHOLDS.accelY ||
+                                        Math.abs(data.accelZ) > THRESHOLDS.accelZ ||
+                                        data.raindrop < THRESHOLDS.raindrop ||       // Critical when LOW
+                                        data.soilMoisture < THRESHOLDS.soilMoisture; // Critical when LOW
+
+                        if (isWarning) {
                             warningMessage.classList.remove('hidden');
                         } else {
                             warningMessage.classList.add('hidden');

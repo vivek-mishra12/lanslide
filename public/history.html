@@ -1,4 +1,3 @@
-<!-- history.html - History Dashboard Page -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -23,34 +22,48 @@
         <h1 class="text-4xl font-extrabold text-gray-800 mb-6">Historical Sensor Data</h1>
         <div class="grid grid-cols-1 gap-8">
             <div class="chart-container">
-                <canvas id="rainChart"></canvas>
+                <canvas id="temperatureChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <canvas id="humidityChart"></canvas>
             </div>
             <div class="chart-container">
                 <canvas id="soilMoistureChart"></canvas>
             </div>
             <div class="chart-container">
-                <canvas id="tiltChart"></canvas>
+                <canvas id="raindropChart"></canvas>
             </div>
             <div class="chart-container">
-                <canvas id="vibrationChart"></canvas>
+                <canvas id="accelXChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <canvas id="accelYChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <canvas id="accelZChart"></canvas>
             </div>
         </div>
     </div>
 
     <script>
-        // Thresholds for each sensor (can be adjusted)
+        // Thresholds updated for the new sensor data structure.
+        // ADC sensors (raindrop, soilMoisture) use INVERSE logic: a low value is critical.
         const THRESHOLDS = {
-            rain: 50,
-            soilMoisture: 70,
-            tilt: 10,
-            vibration: 20
+            temperature: 40,
+            humidity: 90,
+            accelX: 2.5,
+            accelY: 2.5,
+            accelZ: 12.0,
+            raindrop: 100,    // Critical when LOW
+            soilMoisture: 700 // Critical when LOW
         };
 
         const SECONDS_TO_AVERAGE = 10;
 
         function averageData(data) {
             const averagedData = {};
-            const keys = ['rain', 'soilMoisture', 'tilt', 'vibration'];
+            // Updated keys to match the new sensor fields
+            const keys = ['temperature', 'humidity', 'accelX', 'accelY', 'accelZ', 'raindrop', 'soilMoisture'];
 
             keys.forEach(key => {
                 averagedData[key] = [];
@@ -64,11 +77,10 @@
 
             data.forEach(reading => {
                 const readingTime = new Date(reading.timestamp).getTime();
-                // Check if the reading falls within the current 10-second bucket
+                
                 if (readingTime - bucketStartTimestamp < SECONDS_TO_AVERAGE * 1000) {
                     bucket.push(reading);
                 } else {
-                    // Process the full bucket and start a new one
                     if (bucket.length > 0) {
                         const averagedReading = keys.reduce((acc, key) => {
                             const sum = bucket.reduce((s, r) => s + r[key], 0);
@@ -85,7 +97,6 @@
                         averagedData.labels.push(new Date(bucketStartTimestamp).toLocaleTimeString());
                     }
 
-                    // Reset for the new bucket
                     bucket = [reading];
                     bucketStartTimestamp = readingTime;
                 }
@@ -110,10 +121,20 @@
 
             return averagedData;
         }
-
-        function createChart(canvasId, label, data, borderColor, backgroundColor, threshold) {
+        
+        // Added isInverse flag for ADC sensors where a lower value is critical
+        function createChart(canvasId, label, data, borderColor, backgroundColor, threshold, isInverse = false) {
             const ctx = document.getElementById(canvasId).getContext('2d');
-            let backgroundColors = data.map(point => point.y > threshold ? 'rgba(255, 99, 132, 0.5)' : backgroundColor);
+            
+            let backgroundColors = data.map(point => {
+                if (isInverse) {
+                    // If inverse, use red if value is BELOW the critical threshold
+                    return point.y < threshold ? 'rgba(255, 99, 132, 0.5)' : backgroundColor;
+                } else {
+                    // If normal, use red if value is ABOVE the critical threshold
+                    return point.y > threshold ? 'rgba(255, 99, 132, 0.5)' : backgroundColor;
+                }
+            });
 
             new Chart(ctx, {
                 type: 'line',
@@ -146,7 +167,7 @@
                                 display: true,
                                 text: 'Sensor Value'
                             },
-                            beginAtZero: true
+                            beginAtZero: false // Set to false to better visualize small changes
                         }
                     },
                     plugins: {
@@ -169,10 +190,20 @@
                 const rawData = await response.json();
                 const averagedData = averageData(rawData);
 
-                createChart('rainChart', 'Rain Sensor', averagedData.rain, 'rgb(75, 192, 192)', 'rgba(75, 192, 192, 0.5)', THRESHOLDS.rain);
-                createChart('soilMoistureChart', 'Soil Moisture', averagedData.soilMoisture, 'rgb(153, 102, 255)', 'rgba(153, 102, 255, 0.5)', THRESHOLDS.soilMoisture);
-                createChart('tiltChart', 'Tilt Sensor', averagedData.tilt, 'rgb(255, 159, 64)', 'rgba(255, 159, 64, 0.5)', THRESHOLDS.tilt);
-                createChart('vibrationChart', 'Vibration Sensor', averagedData.vibration, 'rgb(255, 99, 132)', 'rgba(255, 99, 132, 0.5)', THRESHOLDS.vibration);
+                // Plot all 7 charts with specific colors and inverse logic where needed
+                createChart('temperatureChart', 'Temperature (°C)', averagedData.temperature, 'rgb(255, 99, 132)', 'rgba(255, 99, 132, 0.5)', THRESHOLDS.temperature);
+                createChart('humidityChart', 'Humidity (%)', averagedData.humidity, 'rgb(54, 162, 235)', 'rgba(54, 162, 235, 0.5)', THRESHOLDS.humidity);
+                
+                // Inverse logic (low value is critical)
+                createChart('soilMoistureChart', 'Soil Moisture (ADC)', averagedData.soilMoisture, 'rgb(153, 102, 255)', 'rgba(153, 102, 255, 0.5)', THRESHOLDS.soilMoisture, true);
+                createChart('raindropChart', 'Raindrop (ADC)', averagedData.raindrop, 'rgb(75, 192, 192)', 'rgba(75, 192, 192, 0.5)', THRESHOLDS.raindrop, true);
+                
+                // Acceleration readings
+                createChart('accelXChart', 'Acceleration X (m/s²)', averagedData.accelX, 'rgb(255, 159, 64)', 'rgba(255, 159, 64, 0.5)', THRESHOLDS.accelX);
+                createChart('accelYChart', 'Acceleration Y (m/s²)', averagedData.accelY, 'rgb(255, 205, 86)', 'rgba(255, 205, 86, 0.5)', THRESHOLDS.accelY);
+                createChart('accelZChart', 'Acceleration Z (m/s²)', averagedData.accelZ, 'rgb(102, 255, 102)', 'rgba(102, 255, 102, 0.5)', THRESHOLDS.accelZ);
+
+
             } catch (error) {
                 console.error('Error fetching and plotting data:', error);
             }
