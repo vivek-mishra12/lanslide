@@ -23,10 +23,7 @@ app.use(express.static(path.join(__dirname, 'public'))); // Serve static files f
 // Use the MongoDB URI from the environment variables
 const mongoURI = process.env.MONGODB_URI;
 
-mongoose.connect(mongoURI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-});
+mongoose.connect(mongoURI);
 
 const db = mongoose.connection;
 db.on('error', console.error.bind(console, 'MongoDB connection error:'));
@@ -34,7 +31,7 @@ db.once('open', () => {
     console.log('Connected to MongoDB');
 });
 
-// Define the schema for our sensor readings
+// Define the NEW schema for your sensor readings
 const sensorDataSchema = new mongoose.Schema({
     temperature: Number,
     humidity: Number,
@@ -54,14 +51,10 @@ const SensorReading = mongoose.model('SensorReading', sensorDataSchema);
 
 // --- API Endpoints ---
 
-// Endpoint to receive new sensor data (simulated sensor POST request)
+// Endpoint to receive new sensor data (Base Station POST request)
 app.post('/api/data', async (req, res) => {
     try {
-        // Extract all 7 new fields from the request body
         const { temperature, humidity, accelX, accelY, accelZ, raindrop, soilMoisture } = req.body;
-        
-        // Note: The 'api_key' sent by the ESP32 is automatically ignored here
-        // as it is not part of the Mongoose schema.
         
         const newReading = new SensorReading({ 
             temperature, 
@@ -89,13 +82,13 @@ app.get('/api/latest', async (req, res) => {
         console.error('Error fetching latest data:', err);
         res.status(500).json({ error: 'Failed to fetch latest data' });
     }
+    
 });
 
 // Endpoint to get historical sensor data for the past hour
 app.get('/api/history', async (req, res) => {
     try {
         const history = await SensorReading.find().sort({ timestamp: 1 });
-        // The data will be averaged on the frontend to keep the backend simple.
         res.json(history);
     } catch (err) {
         console.error('Error fetching historical data:', err);
