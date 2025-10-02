@@ -52,21 +52,37 @@
                 <h2 class="text-xl font-bold text-gray-700">Accel Z (m/s²)</h2>
                 <p id="accelZ-value" class="text-4xl font-light text-purple-500 mt-2">--</p>
             </div>
+
+            <div class="bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200">
+                <h2 class="text-xl font-bold text-gray-700">Gyro X (dps)</h2>
+                <p id="gyroX-value" class="text-4xl font-light text-orange-500 mt-2">--</p>
+            </div>
+            <div class="bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200">
+                <h2 class="text-xl font-bold text-gray-700">Gyro Y (dps)</h2>
+                <p id="gyroY-value" class="text-4xl font-light text-orange-500 mt-2">--</p>
+            </div>
+            <div class="bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200">
+                <h2 class="text-xl font-bold text-gray-700">Gyro Z (dps)</h2>
+                <p id="gyroZ-value" class="text-4xl font-light text-orange-500 mt-2">--</p>
+            </div>
         </div>
         <p class="text-sm text-gray-500 mt-6">Last updated: <span id="timestamp">--</span></p>
     </div>
 
     <script>
-        // Thresholds adjusted for the new sensor data structure.
-        // ADC sensors (raindrop, soilMoisture) use INVERSE logic: a low ADC value is critical.
+        // Thresholds adjusted for the new sensor data structure, including Gyroscope.
         const THRESHOLDS = {
-            temperature: 40,  // High temperature warning (°C)
-            humidity: 90,     // High humidity warning (%)
-            accelX: 2.5,      // High acceleration/tilt value (absolute value, m/s²)
-            accelY: 2.5,      // High acceleration/tilt value (absolute value, m/s²)
-            accelZ: 12.0,     // Significant deviation from 9.81 m/s^2 (m/s²)
-            raindrop: 100,    // Low ADC value (e.g., < 100) means HEAVY rain
-            soilMoisture: 700 // Low ADC value (e.g., < 700) means HIGH moisture
+            temperature: 40,  
+            humidity: 90,     
+            accelX: 2.5,      
+            accelY: 2.5,      
+            accelZ: 12.0,     
+            // ADDED: Gyroscope thresholds (degrees per second - dps)
+            gyroX: 500,
+            gyroY: 500,
+            gyroZ: 500,
+            raindrop: 100,    // Critical when LOW
+            soilMoisture: 700 // Critical when LOW
         };
 
         const warningMessage = document.getElementById('warning-message');
@@ -82,12 +98,18 @@
                 })
                 .then(data => {
                     if (data) {
-                        // Update all 7 new values
+                        // Update all 10 values
                         document.getElementById('temperature-value').textContent = data.temperature.toFixed(2);
                         document.getElementById('humidity-value').textContent = data.humidity.toFixed(2);
                         document.getElementById('accelX-value').textContent = data.accelX.toFixed(2);
                         document.getElementById('accelY-value').textContent = data.accelY.toFixed(2);
                         document.getElementById('accelZ-value').textContent = data.accelZ.toFixed(2);
+                        
+                        // ADDED: Display Gyro values
+                        document.getElementById('gyroX-value').textContent = data.gyroX.toFixed(2);
+                        document.getElementById('gyroY-value').textContent = data.gyroY.toFixed(2);
+                        document.getElementById('gyroZ-value').textContent = data.gyroZ.toFixed(2);
+
                         // ADC values are displayed as integers
                         document.getElementById('raindrop-value').textContent = data.raindrop; 
                         document.getElementById('soilMoisture-value').textContent = data.soilMoisture;
@@ -101,6 +123,10 @@
                                         Math.abs(data.accelX) > THRESHOLDS.accelX ||
                                         Math.abs(data.accelY) > THRESHOLDS.accelY ||
                                         Math.abs(data.accelZ) > THRESHOLDS.accelZ ||
+                                        // ADDED: Gyroscope warning check (absolute value)
+                                        Math.abs(data.gyroX) > THRESHOLDS.gyroX ||
+                                        Math.abs(data.gyroY) > THRESHOLDS.gyroY ||
+                                        Math.abs(data.gyroZ) > THRESHOLDS.gyroZ ||
                                         data.raindrop < THRESHOLDS.raindrop ||       // Critical when LOW
                                         data.soilMoisture < THRESHOLDS.soilMoisture; // Critical when LOW
 

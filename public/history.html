@@ -42,11 +42,20 @@
             <div class="chart-container">
                 <canvas id="accelZChart"></canvas>
             </div>
+            <div class="chart-container">
+                <canvas id="gyroXChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <canvas id="gyroYChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <canvas id="gyroZChart"></canvas>
+            </div>
         </div>
     </div>
 
     <script>
-        // Thresholds updated for the new sensor data structure.
+        // Thresholds updated for all 10 sensor data fields.
         // ADC sensors (raindrop, soilMoisture) use INVERSE logic: a low value is critical.
         const THRESHOLDS = {
             temperature: 40,
@@ -54,6 +63,10 @@
             accelX: 2.5,
             accelY: 2.5,
             accelZ: 12.0,
+            // ADDED: Gyroscope thresholds
+            gyroX: 500,
+            gyroY: 500,
+            gyroZ: 500,
             raindrop: 100,    // Critical when LOW
             soilMoisture: 700 // Critical when LOW
         };
@@ -62,8 +75,8 @@
 
         function averageData(data) {
             const averagedData = {};
-            // Updated keys to match the new sensor fields
-            const keys = ['temperature', 'humidity', 'accelX', 'accelY', 'accelZ', 'raindrop', 'soilMoisture'];
+            // Updated keys to match all 10 sensor fields
+            const keys = ['temperature', 'humidity', 'accelX', 'accelY', 'accelZ', 'gyroX', 'gyroY', 'gyroZ', 'raindrop', 'soilMoisture'];
 
             keys.forEach(key => {
                 averagedData[key] = [];
@@ -131,8 +144,9 @@
                     // If inverse, use red if value is BELOW the critical threshold
                     return point.y < threshold ? 'rgba(255, 99, 132, 0.5)' : backgroundColor;
                 } else {
-                    // If normal, use red if value is ABOVE the critical threshold
-                    return point.y > threshold ? 'rgba(255, 99, 132, 0.5)' : backgroundColor;
+                    // If normal, use red if value is ABOVE the critical threshold (using absolute for accel/gyro)
+                    const valueToCheck = label.includes('Accel') || label.includes('Gyro') ? Math.abs(point.y) : point.y;
+                    return valueToCheck > threshold ? 'rgba(255, 99, 132, 0.5)' : backgroundColor;
                 }
             });
 
@@ -167,7 +181,7 @@
                                 display: true,
                                 text: 'Sensor Value'
                             },
-                            beginAtZero: false // Set to false to better visualize small changes
+                            beginAtZero: false 
                         }
                     },
                     plugins: {
@@ -190,7 +204,7 @@
                 const rawData = await response.json();
                 const averagedData = averageData(rawData);
 
-                // Plot all 7 charts with specific colors and inverse logic where needed
+                // Plot all 10 charts
                 createChart('temperatureChart', 'Temperature (°C)', averagedData.temperature, 'rgb(255, 99, 132)', 'rgba(255, 99, 132, 0.5)', THRESHOLDS.temperature);
                 createChart('humidityChart', 'Humidity (%)', averagedData.humidity, 'rgb(54, 162, 235)', 'rgba(54, 162, 235, 0.5)', THRESHOLDS.humidity);
                 
@@ -198,10 +212,15 @@
                 createChart('soilMoistureChart', 'Soil Moisture (ADC)', averagedData.soilMoisture, 'rgb(153, 102, 255)', 'rgba(153, 102, 255, 0.5)', THRESHOLDS.soilMoisture, true);
                 createChart('raindropChart', 'Raindrop (ADC)', averagedData.raindrop, 'rgb(75, 192, 192)', 'rgba(75, 192, 192, 0.5)', THRESHOLDS.raindrop, true);
                 
-                // Acceleration readings
+                // Acceleration readings (using absolute check in createChart)
                 createChart('accelXChart', 'Acceleration X (m/s²)', averagedData.accelX, 'rgb(255, 159, 64)', 'rgba(255, 159, 64, 0.5)', THRESHOLDS.accelX);
                 createChart('accelYChart', 'Acceleration Y (m/s²)', averagedData.accelY, 'rgb(255, 205, 86)', 'rgba(255, 205, 86, 0.5)', THRESHOLDS.accelY);
                 createChart('accelZChart', 'Acceleration Z (m/s²)', averagedData.accelZ, 'rgb(102, 255, 102)', 'rgba(102, 255, 102, 0.5)', THRESHOLDS.accelZ);
+
+                // ADDED: Gyroscope readings (using absolute check in createChart)
+                createChart('gyroXChart', 'Gyroscope X (dps)', averagedData.gyroX, 'rgb(255, 99, 200)', 'rgba(255, 99, 200, 0.5)', THRESHOLDS.gyroX);
+                createChart('gyroYChart', 'Gyroscope Y (dps)', averagedData.gyroY, 'rgb(150, 150, 255)', 'rgba(150, 150, 255, 0.5)', THRESHOLDS.gyroY);
+                createChart('gyroZChart', 'Gyroscope Z (dps)', averagedData.gyroZ, 'rgb(255, 150, 150)', 'rgba(255, 150, 150, 0.5)', THRESHOLDS.gyroZ);
 
 
             } catch (error) {
