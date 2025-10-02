@@ -31,6 +31,10 @@ db.once('open', () => {
     console.log('Connected to MongoDB');
 });
 
+// vivek-mishra12/lanslide/lanslide-d45f67ee13f3293b99def2aab88deb9cf06c6ec3/server.js
+
+// ... (imports and middleware setup remain the same)
+
 // Define the NEW schema for your sensor readings
 const sensorDataSchema = new mongoose.Schema({
     temperature: Number,
@@ -38,6 +42,11 @@ const sensorDataSchema = new mongoose.Schema({
     accelX: Number,
     accelY: Number,
     accelZ: Number,
+    // --- Added Gyroscope Readings ---
+    gyroX: Number,
+    gyroY: Number,
+    gyroZ: Number,
+    // --------------------------------
     raindrop: Number,
     soilMoisture: Number,
     timestamp: {
@@ -54,7 +63,8 @@ const SensorReading = mongoose.model('SensorReading', sensorDataSchema);
 // Endpoint to receive new sensor data (Base Station POST request)
 app.post('/api/data', async (req, res) => {
     try {
-        const { temperature, humidity, accelX, accelY, accelZ, raindrop, soilMoisture } = req.body;
+        // Updated destructuring to include gyroX, gyroY, gyroZ
+        const { temperature, humidity, accelX, accelY, accelZ, gyroX, gyroY, gyroZ, raindrop, soilMoisture } = req.body;
         
         const newReading = new SensorReading({ 
             temperature, 
@@ -62,6 +72,9 @@ app.post('/api/data', async (req, res) => {
             accelX, 
             accelY, 
             accelZ, 
+            gyroX, // New field included
+            gyroY, // New field included
+            gyroZ, // New field included
             raindrop, 
             soilMoisture 
         });
@@ -72,6 +85,8 @@ app.post('/api/data', async (req, res) => {
         res.status(500).json({ error: 'Failed to save data' });
     }
 });
+
+// ... (remaining API endpoints and cron job remain the same)
 
 // Endpoint to get the latest sensor reading
 app.get('/api/latest', async (req, res) => {
