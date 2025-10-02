@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Live Sensor Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/socket.io/socket.io.js"></script> 
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
     </style>
@@ -77,7 +78,6 @@
             accelX: 2.5,      
             accelY: 2.5,      
             accelZ: 12.0,     
-            // ADDED: Gyroscope thresholds (degrees per second - dps)
             gyroX: 500,
             gyroY: 500,
             gyroZ: 500,
@@ -87,7 +87,44 @@
 
         const warningMessage = document.getElementById('warning-message');
 
-        // Function to fetch and display latest sensor data
+        // 🟢 NEW: Reusable function to update all DOM elements and check for warnings
+        function updateDashboard(data) {
+            if (!data) return;
+
+            // Update all 10 values
+            document.getElementById('temperature-value').textContent = data.temperature.toFixed(2);
+            document.getElementById('humidity-value').textContent = data.humidity.toFixed(2);
+            document.getElementById('accelX-value').textContent = data.accelX.toFixed(2);
+            document.getElementById('accelY-value').textContent = data.accelY.toFixed(2);
+            document.getElementById('accelZ-value').textContent = data.accelZ.toFixed(2);
+            
+            document.getElementById('gyroX-value').textContent = data.gyroX.toFixed(2);
+            document.getElementById('gyroY-value').textContent = data.gyroY.toFixed(2);
+            document.getElementById('gyroZ-value').textContent = data.gyroZ.toFixed(2);
+
+            // ADC values are displayed as integers
+            document.getElementById('raindrop-value').textContent = Math.floor(data.raindrop); 
+            document.getElementById('soilMoisture-value').textContent = Math.floor(data.soilMoisture);
+
+            const date = new Date(data.timestamp);
+            document.getElementById('timestamp').textContent = date.toLocaleTimeString();
+
+            // Check warning conditions
+            const isWarning = data.temperature > THRESHOLDS.temperature ||
+                            data.humidity > THRESHOLDS.humidity ||
+                            Math.abs(data.accelX) > THRESHOLDS.accelX ||
+                            Math.abs(data.accelY) > THRESHOLDS.accelY ||
+                            Math.abs(data.accelZ) > THRESHOLDS.accelZ ||
+                            Math.abs(data.gyroX) > THRESHOLDS.gyroX ||
+                            Math.abs(data.gyroY) > THRESHOLDS.gyroY ||
+                            Math.abs(data.gyroZ) > THRESHOLDS.gyroZ ||
+                            data.raindrop < THRESHOLDS.raindrop ||       
+                            data.soilMoisture < THRESHOLDS.soilMoisture; 
+
+            warningMessage.classList.toggle('hidden', !isWarning);
+        }
+
+        // Function to fetch latest data on page load (initial state)
         function fetchLatestData() {
             fetch('/api/latest')
                 .then(response => {
@@ -97,56 +134,26 @@
                     return response.json();
                 })
                 .then(data => {
-                    if (data) {
-                        // Update all 10 values
-                        document.getElementById('temperature-value').textContent = data.temperature.toFixed(2);
-                        document.getElementById('humidity-value').textContent = data.humidity.toFixed(2);
-                        document.getElementById('accelX-value').textContent = data.accelX.toFixed(2);
-                        document.getElementById('accelY-value').textContent = data.accelY.toFixed(2);
-                        document.getElementById('accelZ-value').textContent = data.accelZ.toFixed(2);
-                        
-                        // ADDED: Display Gyro values
-                        document.getElementById('gyroX-value').textContent = data.gyroX.toFixed(2);
-                        document.getElementById('gyroY-value').textContent = data.gyroY.toFixed(2);
-                        document.getElementById('gyroZ-value').textContent = data.gyroZ.toFixed(2);
-
-                        // ADC values are displayed as integers
-                        document.getElementById('raindrop-value').textContent = data.raindrop; 
-                        document.getElementById('soilMoisture-value').textContent = data.soilMoisture;
-
-                        const date = new Date(data.timestamp);
-                        document.getElementById('timestamp').textContent = date.toLocaleTimeString();
-
-                        // Check if any threshold is crossed and show/hide the warning
-                        const isWarning = data.temperature > THRESHOLDS.temperature ||
-                                        data.humidity > THRESHOLDS.humidity ||
-                                        Math.abs(data.accelX) > THRESHOLDS.accelX ||
-                                        Math.abs(data.accelY) > THRESHOLDS.accelY ||
-                                        Math.abs(data.accelZ) > THRESHOLDS.accelZ ||
-                                        // ADDED: Gyroscope warning check (absolute value)
-                                        Math.abs(data.gyroX) > THRESHOLDS.gyroX ||
-                                        Math.abs(data.gyroY) > THRESHOLDS.gyroY ||
-                                        Math.abs(data.gyroZ) > THRESHOLDS.gyroZ ||
-                                        data.raindrop < THRESHOLDS.raindrop ||       // Critical when LOW
-                                        data.soilMoisture < THRESHOLDS.soilMoisture; // Critical when LOW
-
-                        if (isWarning) {
-                            warningMessage.classList.remove('hidden');
-                        } else {
-                            warningMessage.classList.add('hidden');
-                        }
-
-                    } else {
-                        // If no data is returned, hide the warning
-                        warningMessage.classList.add('hidden');
-                    }
+                    updateDashboard(data); 
                 })
-                .catch(error => console.error('Error fetching data:', error));
+                .catch(error => console.error('Error fetching initial data:', error));
         }
 
-        // Fetch data initially and then every second
+        // --- WebSocket Implementation (Real-time updates) ---
+        // 🟢 NEW: Connect to the Socket.IO server
+        const socket = io(); 
+
+        // 🟢 NEW: Listen for the 'sensor_update' event emitted by the server
+        socket.on('sensor_update', (data) => {
+            console.log('Real-time update received:', data);
+            updateDashboard(data); // Update dashboard immediately
+        });
+
+        // Fetch data initially
         fetchLatestData();
-        setInterval(fetchLatestData, 1000);
+        
+        // ❌ REMOVED: Polling is no longer needed
+        // The previous setInterval(fetchLatestData, 1000) has been removed.
     </script>
 </body>
 </html>

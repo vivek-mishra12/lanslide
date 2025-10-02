@@ -11,8 +11,21 @@ const cron = require('node-cron');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 
+// 🟢 NEW: Import http and socket.io for WebSocket functionality
+const http = require('http'); 
+const { Server } = require("socket.io"); 
+
 const app = express();
-const port = process.env.PORT || 3000; // Use port from .env or default to 3000
+const port = process.env.PORT || 3000; 
+
+// 🟢 NEW: 1. Create HTTP server and attach Socket.IO
+const httpServer = http.createServer(app);
+const io = new Server(httpServer, {
+    cors: {
+        origin: "*", // Allow all origins for the socket connection
+        methods: ["GET", "POST"]
+    }
+});
 
 // Middleware setup
 app.use(cors()); // Enable CORS for cross-origin requests
@@ -20,7 +33,6 @@ app.use(bodyParser.json()); // Parse JSON bodies from incoming requests
 app.use(express.static(path.join(__dirname, 'public'))); // Serve static files from the 'public' directory
 
 // --- MongoDB Connection and Schema ---
-// Use the MongoDB URI from the environment variables
 const mongoURI = process.env.MONGODB_URI;
 
 mongoose.connect(mongoURI);
@@ -30,10 +42,6 @@ db.on('error', console.error.bind(console, 'MongoDB connection error:'));
 db.once('open', () => {
     console.log('Connected to MongoDB');
 });
-
-// vivek-mishra12/lanslide/lanslide-d45f67ee13f3293b99def2aab88deb9cf06c6ec3/server.js
-
-// ... (imports and middleware setup remain the same)
 
 // Define the NEW schema for your sensor readings
 const sensorDataSchema = new mongoose.Schema({
@@ -58,12 +66,19 @@ const sensorDataSchema = new mongoose.Schema({
 
 const SensorReading = mongoose.model('SensorReading', sensorDataSchema);
 
+// 🟢 NEW: 2. Socket.IO connection handling (logging)
+io.on('connection', (socket) => {
+    console.log('A user connected via WebSocket');
+    socket.on('disconnect', () => {
+        console.log('A user disconnected');
+    });
+});
+
 // --- API Endpoints ---
 
 // Endpoint to receive new sensor data (Base Station POST request)
 app.post('/api/data', async (req, res) => {
     try {
-        // Updated destructuring to include gyroX, gyroY, gyroZ
         const { temperature, humidity, accelX, accelY, accelZ, gyroX, gyroY, gyroZ, raindrop, soilMoisture } = req.body;
         
         const newReading = new SensorReading({ 
@@ -72,21 +87,23 @@ app.post('/api/data', async (req, res) => {
             accelX, 
             accelY, 
             accelZ, 
-            gyroX, // New field included
-            gyroY, // New field included
-            gyroZ, // New field included
+            gyroX, 
+            gyroY, 
+            gyroZ, 
             raindrop, 
             soilMoisture 
         });
         await newReading.save();
+
+        // 🟢 NEW: 3. Broadcast the new reading to all connected clients
+        io.emit('sensor_update', newReading); 
+
         res.status(201).json({ message: 'Data saved successfully!' });
     } catch (err) {
         console.error('Error saving data:', err);
         res.status(500).json({ error: 'Failed to save data' });
     }
 });
-
-// ... (remaining API endpoints and cron job remain the same)
 
 // Endpoint to get the latest sensor reading
 app.get('/api/latest', async (req, res) => {
@@ -111,7 +128,7 @@ app.get('/api/history', async (req, res) => {
     }
 });
 
-// Cron job to clean up old data (though Mongoose expires is set, this is a fallback)
+// Cron job to clean up old data
 cron.schedule('0 * * * *', async () => {
     console.log('Running data cleanup task...');
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
@@ -123,7 +140,8 @@ cron.schedule('0 * * * *', async () => {
     }
 });
 
-// Start the server
-app.listen(port, () => {
+// 🟢 NEW: 4. Start the server using the httpServer instance
+httpServer.listen(port, () => {
     console.log(`Server is running at http://localhost:${port}`);
+    console.log(`WebSocket server running on port ${port}`);
 });
