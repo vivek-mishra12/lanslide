@@ -58,7 +58,7 @@
     </div>
 
     <script>
-        // Thresholds updated for all 11 sensor data fields (snake_case).
+        // Thresholds updated for all 11 sensor data fields.
         const THRESHOLDS = {
             temperature: 40,
             humidity: 90,
@@ -68,12 +68,16 @@
             gyro_x: 500,
             gyro_y: 500,
             gyro_z: 500,
-            soil_moisture: 80, // New: Percentage. High value is critical.
-            rain_status: 0.5,  // New: Digital (0/1). High value (1) is critical.
-            vibration: 0.5     // New: Digital (0/1). High value (1) is critical.
+            soil_moisture: 80, 
+            rain_status: 0.5,  
+            vibration: 0.5     
         };
 
         const SECONDS_TO_AVERAGE = 10;
+        
+        // This file no longer needs to run the rain duration calculation as it's been moved 
+        // to index.html to update the live dashboard directly. The functions here are 
+        // retained for historical plotting and averaging.
 
         function averageData(data) {
             const averagedData = {};
@@ -137,8 +141,6 @@
             return averagedData;
         }
         
-        // Reusing original createChart logic but now explicitly setting isInverse to false 
-        // for the moisture/rain sensors as they are no longer ADC and low-critical.
         function createChart(canvasId, label, data, borderColor, backgroundColor, threshold, isInverse = false) {
             const ctx = document.getElementById(canvasId).getContext('2d');
             

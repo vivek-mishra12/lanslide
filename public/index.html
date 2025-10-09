@@ -45,6 +45,11 @@
                 <h2 class="text-xl font-bold text-gray-700">Vibration</h2>
                 <p id="vibration-value" class="text-4xl font-light text-yellow-600 mt-2">--</p>
             </div>
+            
+            <div class="bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200">
+                <h2 class="text-xl font-bold text-gray-700">Rain Duration (Last Hour)</h2>
+                <p id="rain-duration-value" class="text-4xl font-light text-cyan-500 mt-2">--</p>
+            </div>
 
             <div class="bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200">
                 <h2 class="text-xl font-bold text-gray-700">Accel X (g)</h2>
@@ -54,6 +59,7 @@
                 <h2 class="text-xl font-bold text-gray-700">Accel Y (g)</h2>
                 <p id="accel_y-value" class="text-4xl font-light text-purple-500 mt-2">--</p>
             </div>
+
             <div class="bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200">
                 <h2 class="text-xl font-bold text-gray-700">Accel Z (g)</h2>
                 <p id="accel_z-value" class="text-4xl font-light text-purple-500 mt-2">--</p>
@@ -96,6 +102,58 @@
         
         // NEW: Variable to hold the last received sensor data for delta calculation
         let previousData = null;
+
+        // Function to calculate cumulative rain time from history (Moved from history.html for index dashboard update)
+        async function updateRainDuration() {
+            try {
+                // Fetch the full historical data (up to 1 hour based on TTL)
+                const response = await fetch('/api/history');
+                const data = await response.json();
+                
+                if (data.length < 2) {
+                    document.getElementById('rain-duration-value').textContent = "0 mins";
+                    return;
+                }
+
+                let totalRainDurationMs = 0;
+                
+                // Calculate cumulative rain duration
+                for (let i = 1; i < data.length; i++) {
+                    const current = data[i];
+                    const previous = data[i - 1];
+
+                    // Check if the previous reading indicated rain (rain_status >= 1)
+                    if (previous.rain_status >= 1) {
+                        const currentTime = new Date(current.timestamp).getTime();
+                        const previousTime = new Date(previous.timestamp).getTime();
+                        
+                        // The time difference between two consecutive points
+                        const durationSegmentMs = currentTime - previousTime;
+
+                        // Add the duration of the segment to the total
+                        totalRainDurationMs += durationSegmentMs;
+                    }
+                }
+
+                // Convert milliseconds to hours and minutes
+                const totalMinutes = Math.round(totalRainDurationMs / 60000);
+                const hours = Math.floor(totalMinutes / 60);
+                const minutes = totalMinutes % 60;
+                
+                let durationText;
+                if (hours > 0) {
+                    durationText = `${hours} hrs, ${minutes} mins`;
+                } else {
+                    durationText = `${minutes} mins`;
+                }
+                
+                document.getElementById('rain-duration-value').textContent = durationText;
+
+            } catch (error) {
+                console.error('Error fetching and calculating rain duration:', error);
+                document.getElementById('rain-duration-value').textContent = "Error";
+            }
+        }
 
         // Reusable function to update all DOM elements and check for warnings
         function updateDashboard(data) {
@@ -155,7 +213,7 @@
                             Math.abs(data.accel_z) > THRESHOLDS.accel_z ||
                             data.soil_moisture > THRESHOLDS.soil_moisture || 
                             data.vibration > THRESHOLDS.vibration ||
-                            gyroWarning; // Combined with new gyro delta warning
+                            gyroWarning; 
 
             warningMessage.classList.toggle('hidden', !isWarning);
         }
@@ -173,7 +231,6 @@
                     // Store the first data point, but don't calculate delta yet
                     previousData = data;
                     // Update the dashboard with the raw values (delta will show '--')
-                    // Note: We use the raw gyro values for the first display for better UX
                     document.getElementById('gyro_x-value').textContent = data.gyro_x.toFixed(2);
                     document.getElementById('gyro_y-value').textContent = data.gyro_y.toFixed(2);
                     document.getElementById('gyro_z-value').textContent = data.gyro_z.toFixed(2);
@@ -184,6 +241,17 @@
                 .catch(error => console.error('Error fetching initial data:', error));
         }
 
+        // --- Execution ---
+
+        // Fetch data initially
+        fetchLatestData();
+        
+        // Initial rain duration calculation
+        updateRainDuration();
+        
+        // Refresh rain duration every minute (based on history refresh rate expectation)
+        setInterval(updateRainDuration, 60 * 1000);
+
         // --- WebSocket Implementation (Real-time updates) ---
         const socket = io(); 
 
@@ -192,9 +260,6 @@
             console.log('Real-time update received:', data);
             updateDashboard(data); // Update dashboard immediately
         });
-
-        // Fetch data initially
-        fetchLatestData();
     </script>
 </body>
 </html>
