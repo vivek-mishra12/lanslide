@@ -147,14 +147,13 @@
             const date = new Date(data.timestamp);
             document.getElementById('timestamp').textContent = date.toLocaleTimeString();
 
-            // --- Check all warning conditions (now includes gyroDelta) ---
+            // --- Check all warning conditions (Rain Status check removed) ---
             const isWarning = data.temperature > THRESHOLDS.temperature ||
                             data.humidity > THRESHOLDS.humidity ||
                             Math.abs(data.accel_x) > THRESHOLDS.accel_x ||
                             Math.abs(data.accel_y) > THRESHOLDS.accel_y ||
                             Math.abs(data.accel_z) > THRESHOLDS.accel_z ||
                             data.soil_moisture > THRESHOLDS.soil_moisture || 
-                            data.rain_status > THRESHOLDS.rain_status ||       
                             data.vibration > THRESHOLDS.vibration ||
                             gyroWarning; // Combined with new gyro delta warning
 
