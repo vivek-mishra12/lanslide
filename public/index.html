@@ -33,56 +33,64 @@
                 <p id="humidity-value" class="text-4xl font-light text-blue-500 mt-2">--</p>
             </div>
             <div class="bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200">
-                <h2 class="text-xl font-bold text-gray-700">Soil Moisture (ADC)</h2>
-                <p id="soilMoisture-value" class="text-4xl font-light text-green-500 mt-2">--</p>
+                <h2 class="text-xl font-bold text-gray-700">Soil Moisture (%)</h2>
+                <p id="soil_moisture-value" class="text-4xl font-light text-green-500 mt-2">--</p>
             </div>
             <div class="bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200">
-                <h2 class="text-xl font-bold text-gray-700">Raindrop (ADC)</h2>
-                <p id="raindrop-value" class="text-4xl font-light text-cyan-500 mt-2">--</p>
+                <h2 class="text-xl font-bold text-gray-700">Rain Status</h2>
+                <p id="rain_status-value" class="text-4xl font-light text-cyan-500 mt-2">--</p>
             </div>
             
             <div class="bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200">
-                <h2 class="text-xl font-bold text-gray-700">Accel X (m/s²)</h2>
-                <p id="accelX-value" class="text-4xl font-light text-purple-500 mt-2">--</p>
-            </div>
-            <div class="bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200">
-                <h2 class="text-xl font-bold text-gray-700">Accel Y (m/s²)</h2>
-                <p id="accelY-value" class="text-4xl font-light text-purple-500 mt-2">--</p>
-            </div>
-            <div class="bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200">
-                <h2 class="text-xl font-bold text-gray-700">Accel Z (m/s²)</h2>
-                <p id="accelZ-value" class="text-4xl font-light text-purple-500 mt-2">--</p>
+                <h2 class="text-xl font-bold text-gray-700">Vibration</h2>
+                <p id="vibration-value" class="text-4xl font-light text-yellow-600 mt-2">--</p>
             </div>
 
             <div class="bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200">
-                <h2 class="text-xl font-bold text-gray-700">Gyro X (dps)</h2>
-                <p id="gyroX-value" class="text-4xl font-light text-orange-500 mt-2">--</p>
+                <h2 class="text-xl font-bold text-gray-700">Accel X (g)</h2>
+                <p id="accel_x-value" class="text-4xl font-light text-purple-500 mt-2">--</p>
             </div>
             <div class="bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200">
-                <h2 class="text-xl font-bold text-gray-700">Gyro Y (dps)</h2>
-                <p id="gyroY-value" class="text-4xl font-light text-orange-500 mt-2">--</p>
+                 <h2 class="text-xl font-bold text-gray-700">Accel Y (g)</h2>
+                <p id="accel_y-value" class="text-4xl font-light text-purple-500 mt-2">--</p>
             </div>
             <div class="bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200">
-                <h2 class="text-xl font-bold text-gray-700">Gyro Z (dps)</h2>
-                <p id="gyroZ-value" class="text-4xl font-light text-orange-500 mt-2">--</p>
+                 <h2 class="text-xl font-bold text-gray-700">Accel Z (g)</h2>
+                <p id="accel_z-value" class="text-4xl font-light text-purple-500 mt-2">--</p>
+            </div>
+
+            <div class="bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200">
+                 <h2 class="text-xl font-bold text-gray-700">Gyro X (dps)</h2>
+                <p id="gyro_x-value" class="text-4xl font-light text-orange-500 mt-2">--</p>
+            </div>
+            <div class="bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200">
+                 <h2 class="text-xl font-bold text-gray-700">Gyro Y (dps)</h2>
+                <p id="gyro_y-value" class="text-4xl font-light text-orange-500 mt-2">--</p>
+            </div>
+            <div class="bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200">
+                 <h2 class="text-xl font-bold text-gray-700">Gyro Z (dps)</h2>
+                <p id="gyro_z-value" class="text-4xl font-light text-orange-500 mt-2">--</p>
             </div>
         </div>
         <p class="text-sm text-gray-500 mt-6">Last updated: <span id="timestamp">--</span></p>
     </div>
 
     <script>
-        // Thresholds adjusted for the new sensor data structure, including Gyroscope.
+        // Thresholds adjusted for the new 11 sensor data fields (snake_case).
+        // High value is critical for all non-ADC sensors. 
+        // Soil Moisture is now percentage, with high value indicating saturation risk.
         const THRESHOLDS = {
             temperature: 40,  
             humidity: 90,     
-            accelX: 2.5,      
-            accelY: 2.5,      
-            accelZ: 12.0,     
-            gyroX: 500,
-            gyroY: 500,
-            gyroZ: 500,
-            raindrop: 100,    // Critical when LOW
-            soilMoisture: 700 // Critical when LOW
+            accel_x: 2.5,      
+            accel_y: 2.5,      
+            accel_z: 12.0,     
+            gyro_x: 500,
+            gyro_y: 500,
+            gyro_z: 500,
+            soil_moisture: 80, // New: Percentage. Critical when HIGH (>80).
+            rain_status: 0.5,  // New: Digital (0/1). Critical when HIGH (>0.5, i.e. 1).
+            vibration: 0.5     // New: Digital (0/1). Critical when HIGH (>0.5, i.e. 1).
         };
 
         const warningMessage = document.getElementById('warning-message');
@@ -91,35 +99,43 @@
         function updateDashboard(data) {
             if (!data) return;
 
-            // Update all 10 values
+            // Update all 11 values (using snake_case)
             document.getElementById('temperature-value').textContent = data.temperature.toFixed(2);
             document.getElementById('humidity-value').textContent = data.humidity.toFixed(2);
-            document.getElementById('accelX-value').textContent = data.accelX.toFixed(2);
-            document.getElementById('accelY-value').textContent = data.accelY.toFixed(2);
-            document.getElementById('accelZ-value').textContent = data.accelZ.toFixed(2);
             
-            document.getElementById('gyroX-value').textContent = data.gyroX.toFixed(2);
-            document.getElementById('gyroY-value').textContent = data.gyroY.toFixed(2);
-            document.getElementById('gyroZ-value').textContent = data.gyroZ.toFixed(2);
+            // Accel and Gyro (snake_case)
+            document.getElementById('accel_x-value').textContent = data.accel_x.toFixed(2);
+            document.getElementById('accel_y-value').textContent = data.accel_y.toFixed(2);
+            document.getElementById('accel_z-value').textContent = data.accel_z.toFixed(2);
+            document.getElementById('gyro_x-value').textContent = data.gyro_x.toFixed(2);
+            document.getElementById('gyro_y-value').textContent = data.gyro_y.toFixed(2);
+            document.getElementById('gyro_z-value').textContent = data.gyro_z.toFixed(2);
 
-            // ADC values are displayed as integers
-            document.getElementById('raindrop-value').textContent = Math.floor(data.raindrop); 
-            document.getElementById('soilMoisture-value').textContent = Math.floor(data.soilMoisture);
+            // Soil Moisture (Percentage)
+            document.getElementById('soil_moisture-value').textContent = data.soil_moisture.toFixed(2); 
+
+            // Digital values (Rain Status and Vibration)
+            const rainText = data.rain_status >= 1 ? '☔ ON' : '☀️ OFF';
+            document.getElementById('rain_status-value').textContent = rainText; 
+            
+            const vibText = data.vibration >= 1 ? '💥 YES' : '😌 NO';
+            document.getElementById('vibration-value').textContent = vibText;
 
             const date = new Date(data.timestamp);
             document.getElementById('timestamp').textContent = date.toLocaleTimeString();
 
-            // Check warning conditions
+            // Check warning conditions (updated for 11 fields, all using high-value warning logic)
             const isWarning = data.temperature > THRESHOLDS.temperature ||
                             data.humidity > THRESHOLDS.humidity ||
-                            Math.abs(data.accelX) > THRESHOLDS.accelX ||
-                            Math.abs(data.accelY) > THRESHOLDS.accelY ||
-                            Math.abs(data.accelZ) > THRESHOLDS.accelZ ||
-                            Math.abs(data.gyroX) > THRESHOLDS.gyroX ||
-                            Math.abs(data.gyroY) > THRESHOLDS.gyroY ||
-                            Math.abs(data.gyroZ) > THRESHOLDS.gyroZ ||
-                            data.raindrop < THRESHOLDS.raindrop ||       
-                            data.soilMoisture < THRESHOLDS.soilMoisture; 
+                            Math.abs(data.accel_x) > THRESHOLDS.accel_x ||
+                            Math.abs(data.accel_y) > THRESHOLDS.accel_y ||
+                            Math.abs(data.accel_z) > THRESHOLDS.accel_z ||
+                            Math.abs(data.gyro_x) > THRESHOLDS.gyro_x ||
+                            Math.abs(data.gyro_y) > THRESHOLDS.gyro_y ||
+                            Math.abs(data.gyro_z) > THRESHOLDS.gyro_z ||
+                            data.soil_moisture > THRESHOLDS.soil_moisture || 
+                            data.rain_status > THRESHOLDS.rain_status ||       
+                            data.vibration > THRESHOLDS.vibration; 
 
             warningMessage.classList.toggle('hidden', !isWarning);
         }
@@ -140,7 +156,6 @@
         }
 
         // --- WebSocket Implementation (Real-time updates) ---
-        // 🟢 NEW: Connect to the Socket.IO server
         const socket = io(); 
 
         // 🟢 NEW: Listen for the 'sensor_update' event emitted by the server
@@ -151,9 +166,6 @@
 
         // Fetch data initially
         fetchLatestData();
-        
-        // ❌ REMOVED: Polling is no longer needed
-        // The previous setInterval(fetchLatestData, 1000) has been removed.
     </script>
 </body>
 </html>

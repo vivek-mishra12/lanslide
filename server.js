@@ -11,14 +11,14 @@ const cron = require('node-cron');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 
-// 🟢 NEW: Import http and socket.io for WebSocket functionality
+// 泙 NEW: Import http and socket.io for WebSocket functionality
 const http = require('http'); 
 const { Server } = require("socket.io"); 
 
 const app = express();
 const port = process.env.PORT || 3000; 
 
-// 🟢 NEW: 1. Create HTTP server and attach Socket.IO
+// 泙 NEW: 1. Create HTTP server and attach Socket.IO
 const httpServer = http.createServer(app);
 const io = new Server(httpServer, {
     cors: {
@@ -43,20 +43,19 @@ db.once('open', () => {
     console.log('Connected to MongoDB');
 });
 
-// Define the NEW schema for your sensor readings
+// Define the NEW schema for your sensor readings (Updated for 11 fields, snake_case)
 const sensorDataSchema = new mongoose.Schema({
     temperature: Number,
     humidity: Number,
-    accelX: Number,
-    accelY: Number,
-    accelZ: Number,
-    // --- Added Gyroscope Readings ---
-    gyroX: Number,
-    gyroY: Number,
-    gyroZ: Number,
-    // --------------------------------
-    raindrop: Number,
-    soilMoisture: Number,
+    soil_moisture: Number, // CHANGED from soilMoisture (now percentage)
+    rain_status: Number,   // CHANGED from raindrop (now digital 0/1)
+    vibration: Number,     // NEW field (digital 0/1)
+    accel_x: Number,       // CHANGED from accelX
+    accel_y: Number,       // CHANGED from accelY
+    accel_z: Number,       // CHANGED from accelZ
+    gyro_x: Number,        // CHANGED from gyroX
+    gyro_y: Number,        // CHANGED from gyroY
+    gyro_z: Number,        // CHANGED from gyroZ
     timestamp: {
         type: Date,
         default: Date.now,
@@ -66,7 +65,7 @@ const sensorDataSchema = new mongoose.Schema({
 
 const SensorReading = mongoose.model('SensorReading', sensorDataSchema);
 
-// 🟢 NEW: 2. Socket.IO connection handling (logging)
+// 泙 NEW: 2. Socket.IO connection handling (logging)
 io.on('connection', (socket) => {
     console.log('A user connected via WebSocket');
     socket.on('disconnect', () => {
@@ -79,23 +78,37 @@ io.on('connection', (socket) => {
 // Endpoint to receive new sensor data (Base Station POST request)
 app.post('/api/data', async (req, res) => {
     try {
-        const { temperature, humidity, accelX, accelY, accelZ, gyroX, gyroY, gyroZ, raindrop, soilMoisture } = req.body;
+        // Updated destructuring for the new 11 fields (snake_case)
+        const { 
+            temperature, 
+            humidity, 
+            soil_moisture, 
+            rain_status, 
+            vibration,
+            accel_x, 
+            accel_y, 
+            accel_z, 
+            gyro_x, 
+            gyro_y, 
+            gyro_z 
+        } = req.body;
         
         const newReading = new SensorReading({ 
             temperature, 
             humidity, 
-            accelX, 
-            accelY, 
-            accelZ, 
-            gyroX, 
-            gyroY, 
-            gyroZ, 
-            raindrop, 
-            soilMoisture 
+            soil_moisture, 
+            rain_status, 
+            vibration,
+            accel_x, 
+            accel_y, 
+            accel_z, 
+            gyro_x, 
+            gyro_y, 
+            gyro_z 
         });
         await newReading.save();
 
-        // 🟢 NEW: 3. Broadcast the new reading to all connected clients
+        // 泙 NEW: 3. Broadcast the new reading to all connected clients
         io.emit('sensor_update', newReading); 
 
         res.status(201).json({ message: 'Data saved successfully!' });
@@ -140,7 +153,7 @@ cron.schedule('0 * * * *', async () => {
     }
 });
 
-// 🟢 NEW: 4. Start the server using the httpServer instance
+// 泙 NEW: 4. Start the server using the httpServer instance
 httpServer.listen(port, () => {
     console.log(`Server is running at http://localhost:${port}`);
     console.log(`WebSocket server running on port ${port}`);
