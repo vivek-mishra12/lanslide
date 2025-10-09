@@ -11,14 +11,14 @@ const cron = require('node-cron');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 
-// 泙 NEW: Import http and socket.io for WebSocket functionality
+// NEW: Import http and socket.io for WebSocket functionality
 const http = require('http'); 
 const { Server } = require("socket.io"); 
 
 const app = express();
 const port = process.env.PORT || 3000; 
 
-// 泙 NEW: 1. Create HTTP server and attach Socket.IO
+// NEW: 1. Create HTTP server and attach Socket.IO
 const httpServer = http.createServer(app);
 const io = new Server(httpServer, {
     cors: {
@@ -65,7 +65,7 @@ const sensorDataSchema = new mongoose.Schema({
 
 const SensorReading = mongoose.model('SensorReading', sensorDataSchema);
 
-// 泙 NEW: 2. Socket.IO connection handling (logging)
+// NEW: 2. Socket.IO connection handling (logging)
 io.on('connection', (socket) => {
     console.log('A user connected via WebSocket');
     socket.on('disconnect', () => {
@@ -108,7 +108,7 @@ app.post('/api/data', async (req, res) => {
         });
         await newReading.save();
 
-        // 泙 NEW: 3. Broadcast the new reading to all connected clients
+        // NEW: 3. Broadcast the new reading to all connected clients
         io.emit('sensor_update', newReading); 
 
         res.status(201).json({ message: 'Data saved successfully!' });
@@ -153,7 +153,7 @@ cron.schedule('0 * * * *', async () => {
     }
 });
 
-// 泙 NEW: 4. Start the server using the httpServer instance
+// NEW: 4. Start the server using the httpServer instance
 httpServer.listen(port, () => {
     console.log(`Server is running at http://localhost:${port}`);
     console.log(`WebSocket server running on port ${port}`);

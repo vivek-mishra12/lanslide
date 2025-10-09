@@ -18,7 +18,7 @@
     </nav>
 
     <div id="warning-message" class="bg-red-500 text-white p-4 rounded-xl shadow-lg w-full max-w-4xl text-center mb-6 hidden">
-        <p class="text-xl font-bold">🚨 WARNING: Critical sensor value detected! 🚨</p>
+        <p class="text-xl font-bold">WARNING: Critical sensor value detected!</p>
     </div>
 
     <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-4xl text-center">
@@ -114,11 +114,11 @@
             // Soil Moisture (Percentage)
             document.getElementById('soil_moisture-value').textContent = data.soil_moisture.toFixed(2); 
 
-            // Digital values (Rain Status and Vibration)
-            const rainText = data.rain_status >= 1 ? '☔ ON' : '☀️ OFF';
+            // Digital values (Rain Status and Vibration) - Emojis removed
+            const rainText = data.rain_status >= 1 ? 'ON' : 'OFF';
             document.getElementById('rain_status-value').textContent = rainText; 
             
-            const vibText = data.vibration >= 1 ? '💥 YES' : '😌 NO';
+            const vibText = data.vibration >= 1 ? 'YES' : 'NO';
             document.getElementById('vibration-value').textContent = vibText;
 
             const date = new Date(data.timestamp);
@@ -158,7 +158,7 @@
         // --- WebSocket Implementation (Real-time updates) ---
         const socket = io(); 
 
-        // 🟢 NEW: Listen for the 'sensor_update' event emitted by the server
+        // NEW: Listen for the 'sensor_update' event emitted by the server
         socket.on('sensor_update', (data) => {
             console.log('Real-time update received:', data);
             updateDashboard(data); // Update dashboard immediately
